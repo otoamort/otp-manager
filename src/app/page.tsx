@@ -1,12 +1,19 @@
-
 'use client';
 
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
-import {Plus, Copy, Edit, Trash2, RefreshCw} from 'lucide-react';
+import {
+  Plus,
+  Copy,
+  Edit,
+  Trash2,
+  RefreshCw,
+  Camera,
+  Image as ImageIcon,
+} from 'lucide-react';
 import {
   Dialog,
   DialogTrigger,
@@ -17,8 +24,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {Textarea} from '@/components/ui/textarea';
-import {useToast} from "@/hooks/use-toast";
-import {cn} from "@/lib/utils";
+import {useToast} from '@/hooks/use-toast';
+import {cn} from '@/lib/utils';
+import jsQR from 'jsqr';
 
 // Function to generate OTP (replace with your actual OTP generation logic)
 function generateOTP(secret: string, prefix: string = '', postfix: string = '') {
@@ -45,6 +53,11 @@ export default function Home() {
   const [postfix, setPostfix] = useState('');
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const {toast} = useToast();
+
+  const [isScanning, setIsScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
 
   useEffect(() => {
     // Load configurations from local storage on component mount
@@ -80,9 +93,9 @@ export default function Home() {
   const handleSaveConfig = () => {
     if (!accountName || !secretKey) {
       toast({
-        title: "Error",
-        description: "Account Name and Secret Key cannot be empty.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Account Name and Secret Key cannot be empty.',
+        variant: 'destructive',
       });
       return;
     }
@@ -97,23 +110,27 @@ export default function Home() {
 
     setOtpConfigs((prevConfigs) => {
       const updatedConfigs = selectedConfigId
-        ? prevConfigs.map((config) => (config.id === selectedConfigId ? newConfig : config))
+        ? prevConfigs.map((config) =>
+            config.id === selectedConfigId ? newConfig : config
+          )
         : [...prevConfigs, newConfig];
       return updatedConfigs;
     });
 
     setIsDialogOpen(false);
     toast({
-      title: "Success",
+      title: 'Success',
       description: `Configuration ${selectedConfigId ? 'updated' : 'added'} successfully.`,
     });
   };
 
   const handleDeleteConfig = (id: string) => {
-    setOtpConfigs((prevConfigs) => prevConfigs.filter((config) => config.id !== id));
+    setOtpConfigs((prevConfigs) =>
+      prevConfigs.filter((config) => config.id !== id)
+    );
     toast({
-      title: "Success",
-      description: "Configuration deleted successfully.",
+      title: 'Success',
+      description: 'Configuration deleted successfully.',
     });
   };
 
@@ -121,15 +138,17 @@ export default function Home() {
     const otp = generateOTP(secret, prefix, postfix);
     navigator.clipboard.writeText(otp);
     toast({
-      title: "OTP Copied",
-      description: "OTP copied to clipboard.",
+      title: 'OTP Copied',
+      description: 'OTP copied to clipboard.',
     });
   };
 
-  const [remainingTimes, setRemainingTimes] = useState<{ [key: string]: number }>({});
+  const [remainingTimes, setRemainingTimes] = useState<{
+    [key: string]: number;
+  }>({});
 
   const calculateRemainingTime = () => {
-    const newRemainingTimes: { [key: string]: number } = {};
+    const newRemainingTimes: {[key: string]: number} = {};
     otpConfigs.forEach((config) => {
       newRemainingTimes[config.id] = 30 - (Math.floor(Date.now() / 1000) % 30);
     });
@@ -147,9 +166,108 @@ export default function Home() {
     const otp = generateOTP(secret, prefix, postfix);
     navigator.clipboard.writeText(otp);
     toast({
-      title: "OTP Refreshed and Copied",
-      description: "New OTP copied to clipboard.",
+      title: 'OTP Refreshed and Copied',
+      description: 'New OTP copied to clipboard.',
     });
+  };
+
+  const getCameraPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video: true});
+      setHasCameraPermission(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description:
+          'Please enable camera permissions in your browser settings to use this app.',
+      });
+    }
+  };
+
+  const handleScanQRCode = async () => {
+    if (!hasCameraPermission) {
+      await getCameraPermission();
+      return;
+    }
+
+    setIsScanning(true);
+    const tick = async () => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!canvas) {
+          setIsScanning(false);
+          return;
+        }
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+          setIsScanning(false);
+          return;
+        }
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
+
+        if (code) {
+          setSecretKey(code.data);
+          setIsScanning(false);
+          setIsDialogOpen(true);
+        } else {
+          requestAnimationFrame(tick);
+        }
+      } else {
+        requestAnimationFrame(tick);
+      }
+    };
+
+    tick();
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0);
+        const imageData = ctx?.getImageData(0, 0, img.width, img.height);
+        if (imageData) {
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            setSecretKey(code.data);
+            setIsDialogOpen(true);
+          } else {
+            toast({
+              title: 'Error',
+              description: 'No QR code found in the image.',
+              variant: 'destructive',
+            });
+          }
+        }
+      };
+      img.src = e.target.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -157,7 +275,7 @@ export default function Home() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">OTP Manager Pro</h1>
         <Button onClick={handleAddConfig}>
-          <Plus className="mr-2 h-4 w-4"/>
+          <Plus className="mr-2 h-4 w-4" />
           Add Configuration
         </Button>
       </div>
@@ -180,22 +298,34 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleCopyOTP(config.secretKey, config.prefix, config.postfix)}
+                  onClick={() =>
+                    handleCopyOTP(config.secretKey, config.prefix, config.postfix)
+                  }
                 >
-                  <Copy className="h-4 w-4"/>
+                  <Copy className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleRefreshOTP(config.secretKey, config.prefix, config.postfix)}
+                  onClick={() =>
+                    handleRefreshOTP(config.secretKey, config.prefix, config.postfix)
+                  }
                 >
-                  <RefreshCw className="h-4 w-4"/>
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
-                <Button variant="secondary" size="icon" onClick={() => handleEditConfig(config)}>
-                  <Edit className="h-4 w-4"/>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => handleEditConfig(config)}
+                >
+                  <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="destructive" size="icon" onClick={() => handleDeleteConfig(config.id)}>
-                  <Trash2 className="h-4 w-4"/>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleDeleteConfig(config.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
@@ -217,55 +347,95 @@ export default function Home() {
               Enter the details for the OTP configuration.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="accountName" className="text-right">
-                Account Name
-              </Label>
-              <Input
-                type="text"
-                id="accountName"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                className="col-span-3"
-              />
+
+          {isScanning ? (
+            <>
+              <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
+              <canvas ref={canvasRef} className="hidden" />
+              {!hasCameraPermission && (
+                <Alert variant="destructive">
+                  <AlertTitle>Camera Access Required</AlertTitle>
+                  <AlertDescription>
+                    Please allow camera access to use this feature.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
+          ) : (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="accountName" className="text-right">
+                  Account Name
+                </Label>
+                <Input
+                  type="text"
+                  id="accountName"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="secretKey" className="text-right">
+                  Secret Key
+                </Label>
+                <Textarea
+                  id="secretKey"
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="prefix" className="text-right">
+                  Prefix
+                </Label>
+                <Input
+                  type="text"
+                  id="prefix"
+                  value={prefix}
+                  onChange={(e) => setPrefix(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="postfix" className="text-right">
+                  Postfix
+                </Label>
+                <Input
+                  type="text"
+                  id="postfix"
+                  value={postfix}
+                  onChange={(e) => setPostfix(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="secondary"
+                  onClick={handleScanQRCode}
+                  disabled={isScanning}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Scan QR Code
+                </Button>
+                <Input
+                  type="file"
+                  id="imageUpload"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <Label htmlFor="imageUpload" className="cursor-pointer">
+                  <Button variant="secondary" asChild>
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    <span>Upload QR Code</span>
+                  </Button>
+                </Label>
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="secretKey" className="text-right">
-                Secret Key
-              </Label>
-              <Textarea
-                id="secretKey"
-                value={secretKey}
-                onChange={(e) => setSecretKey(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="prefix" className="text-right">
-                Prefix
-              </Label>
-              <Input
-                type="text"
-                id="prefix"
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="postfix" className="text-right">
-                Postfix
-              </Label>
-              <Input
-                type="text"
-                id="postfix"
-                value={postfix}
-                onChange={(e) => setPostfix(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-          </div>
+          )}
           <DialogFooter>
             <Button type="submit" onClick={handleSaveConfig}>
               Save Configuration
@@ -276,3 +446,14 @@ export default function Home() {
     </div>
   );
 }
+
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
