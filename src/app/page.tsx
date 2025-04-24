@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect, useRef} from 'react';
@@ -428,7 +429,7 @@ export default function Home() {
                   onChange={handleImageUpload}
                 />
                 <Label htmlFor="imageUpload" className="cursor-pointer">
-                  <Button variant="secondary" asChild>
+                  <Button variant="secondary">
                     <ImageIcon className="mr-2 h-4 w-4" />
                     <span>Upload QR Code</span>
                   </Button>
