@@ -1,4 +1,3 @@
-
 'use client';
 
 import {useState, useEffect, useRef} from 'react';
@@ -14,6 +13,8 @@ import {
   RefreshCw,
   Camera,
   Image as ImageIcon,
+  Download,
+  Upload,
 } from 'lucide-react';
 import {
   Dialog,
@@ -28,12 +29,12 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
 import {cn} from '@/lib/utils';
 import jsQR from 'jsqr';
+import {generate} from 'otplib/totp';
 
 // Function to generate OTP (replace with your actual OTP generation logic)
 function generateOTP(secret: string, prefix: string = '', postfix: string = '') {
-  // Placeholder: replace with actual OTP generation logic
-  const otp = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-  return `${prefix}${otp}${postfix}`;
+  const token = generate(secret);
+  return `${prefix}${token}${postfix}`;
 }
 
 // Configuration type
@@ -271,14 +272,73 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
+  const handleExportConfig = () => {
+    const jsonString = JSON.stringify(otpConfigs);
+    const blob = new Blob([jsonString], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'otpConfigs.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportConfig = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const jsonString = e.target?.result as string;
+        const importedConfigs = JSON.parse(jsonString) as OTPConfig[];
+        setOtpConfigs(importedConfigs);
+        toast({
+          title: 'Success',
+          description: 'Configurations imported successfully.',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to import configurations. Invalid JSON file.',
+          variant: 'destructive',
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">OTP Manager Pro</h1>
-        <Button onClick={handleAddConfig}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Configuration
-        </Button>
+        <div>
+          <Button onClick={handleAddConfig} className="mr-2">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Configuration
+          </Button>
+          <Button variant="secondary" onClick={handleExportConfig} className="mr-2">
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Input
+            type="file"
+            id="importConfig"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportConfig}
+          />
+          <Label htmlFor="importConfig">
+            <Button variant="secondary">
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Button>
+          </Label>
+        </div>
       </div>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {otpConfigs.map((config) => (
