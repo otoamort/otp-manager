@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
-import {cn} from '@/lib/utils';
+import {cn, parseOtpAuthUri} from '@/lib/utils';
 import jsQR from 'jsqr';
 import {totp} from 'otplib';
 import {
@@ -273,7 +273,9 @@ export default function Home() {
         if (imageData) {
           const code = jsQR(imageData.data, imageData.width, imageData.height);
           if (code) {
-            setSecretKey(code.data);
+            const otpAuthData = parseOtpAuthUri(code.data);
+            setSecretKey(otpAuthData?.parameters?.secret || '');
+            setAccountName(otpAuthData?.label?.account || '');
             setIsDialogOpen(true);
           } else {
             toast({
@@ -518,10 +520,10 @@ export default function Home() {
                   onChange={handleImageUpload}
                 />
                 <Label htmlFor="imageUpload" className="cursor-pointer">
-                  <Button variant="secondary">
+                  <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2">
                     <ImageIcon className="mr-2 h-4 w-4" />
                     <span>Upload QR Code</span>
-                  </Button>
+                  </span>
                 </Label>
               </div>
             </div>
