@@ -29,7 +29,17 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
 import {cn} from '@/lib/utils';
 import jsQR from 'jsqr';
-import { totp } from 'otplib';
+import {totp} from 'otplib';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 
 // Function to generate OTP (replace with your actual OTP generation logic)
 function generateOTP(secret: string, prefix: string = '', postfix: string = '') {
@@ -274,7 +284,7 @@ export default function Home() {
 
   const handleExportConfig = () => {
     const jsonString = JSON.stringify(otpConfigs);
-    const blob = new Blob([jsonString], {type: "application/json"});
+    const blob = new Blob([jsonString], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -348,7 +358,12 @@ export default function Home() {
             </CardHeader>
             <CardContent className="flex flex-col space-y-2">
               <div className="text-lg font-bold text-center">
-                {generateOTP(config.secretKey, config.prefix, config.postfix)}
+                <Input
+                  type="password"
+                  value={generateOTP(config.secretKey, config.prefix, config.postfix)}
+                  readOnly
+                  className="text-lg font-bold text-center"
+                />
               </div>
               {remainingTimes[config.id] !== undefined && (
                 <div className="text-sm text-muted-foreground text-center">
@@ -507,14 +522,3 @@ export default function Home() {
     </div>
   );
 }
-
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
