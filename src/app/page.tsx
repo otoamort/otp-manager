@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
+import {ButtonGroup} from '@/components/ui/button-group';
 
 // Function to generate OTP (replace with your actual OTP generation logic)
 function generateOTP(secret: string, prefix: string = '', postfix: string = '') {
@@ -181,6 +182,12 @@ export default function Home() {
       title: 'OTP Refreshed and Copied',
       description: 'New OTP copied to clipboard.',
     });
+  };
+
+  const [isOtpVisible, setIsOtpVisible] = useState(false);
+
+  const toggleOtpVisibility = () => {
+    setIsOtpVisible(!isOtpVisible);
   };
 
   const getCameraPermission = async () => {
@@ -331,23 +338,25 @@ export default function Home() {
             <Plus className="mr-2 h-4 w-4" />
             Add Configuration
           </Button>
-          <Button variant="secondary" onClick={handleExportConfig} className="mr-2">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Input
-            type="file"
-            id="importConfig"
-            accept=".json"
-            className="hidden"
-            onChange={handleImportConfig}
-          />
-          <Label htmlFor="importConfig">
-            <Button variant="secondary">
-              <Upload className="mr-2 h-4 w-4" />
-              Import
+          <ButtonGroup>
+            <Button variant="secondary" onClick={handleExportConfig}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
             </Button>
-          </Label>
+            <Input
+              type="file"
+              id="importConfig"
+              accept=".json"
+              className="hidden"
+              onChange={handleImportConfig}
+            />
+            <Label htmlFor="importConfig">
+              <Button variant="secondary">
+                <Upload className="mr-2 h-4 w-4" />
+                Import
+              </Button>
+            </Label>
+          </ButtonGroup>
         </div>
       </div>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -359,11 +368,16 @@ export default function Home() {
             <CardContent className="flex flex-col space-y-2">
               <div className="text-lg font-bold text-center">
                 <Input
-                  type="password"
+                  type={isOtpVisible ? 'text' : 'password'}
                   value={generateOTP(config.secretKey, config.prefix, config.postfix)}
                   readOnly
                   className="text-lg font-bold text-center"
                 />
+              </div>
+              <div className="text-center">
+                <Button variant="ghost" size="sm" onClick={toggleOtpVisibility}>
+                  {isOtpVisible ? 'Hide' : 'Show'} OTP
+                </Button>
               </div>
               {remainingTimes[config.id] !== undefined && (
                 <div className="text-sm text-muted-foreground text-center">
