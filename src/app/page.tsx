@@ -29,11 +29,11 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
 import {cn} from '@/lib/utils';
 import jsQR from 'jsqr';
-import {generate} from 'otplib/totp';
+import { totp } from 'otplib';
 
 // Function to generate OTP (replace with your actual OTP generation logic)
 function generateOTP(secret: string, prefix: string = '', postfix: string = '') {
-  const token = generate(secret);
+  const token = totp.generate(secret);
   return `${prefix}${token}${postfix}`;
 }
 
