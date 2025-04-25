@@ -286,7 +286,9 @@ export default function Home() {
           }
         }
       };
-      img.src = e.target.result as string;
+      if (e.target) {
+        img.src = e.target.result as string;
+      }
     };
     reader.readAsDataURL(file);
   };
