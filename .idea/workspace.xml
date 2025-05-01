@@ -4,16 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="625c3c49-bd61-495a-86b4-7e7c8ef41514" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ai/ai-instance.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/ai/ai-instance.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/use-mobile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/use-mobile.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/use-toast.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/use-toast.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lib/utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib/utils.ts" afterDir="false" />
-    </list>
+    <list default="true" id="625c3c49-bd61-495a-86b4-7e7c8ef41514" name="Changes" comment="Add RootErrorBoundary and enhance OTP management&#10;&#10;Introduce `RootErrorBoundary` to handle application-level errors with logging and a user-friendly fallback UI. Enhance OTP management by refining OTP handling, improving logging via `LoggingService`, and adding detailed JSDoc comments for improved maintainability and developer clarity." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -80,11 +71,24 @@
       <option name="presentableId" value="Default" />
       <updated>1746075889300</updated>
       <workItem from="1746075890344" duration="10526000" />
-      <workItem from="1746114284432" duration="1077000" />
+      <workItem from="1746114284432" duration="1405000" />
     </task>
+    <task id="LOCAL-00001" summary="Add RootErrorBoundary and enhance OTP management&#10;&#10;Introduce `RootErrorBoundary` to handle application-level errors with logging and a user-friendly fallback UI. Enhance OTP management by refining OTP handling, improving logging via `LoggingService`, and adding detailed JSDoc comments for improved maintainability and developer clarity.">
+      <option name="closed" value="true" />
+      <created>1746115664215</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1746115664215</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Add RootErrorBoundary and enhance OTP management&#10;&#10;Introduce `RootErrorBoundary` to handle application-level errors with logging and a user-friendly fallback UI. Enhance OTP management by refining OTP handling, improving logging via `LoggingService`, and adding detailed JSDoc comments for improved maintainability and developer clarity." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add RootErrorBoundary and enhance OTP management&#10;&#10;Introduce `RootErrorBoundary` to handle application-level errors with logging and a user-friendly fallback UI. Enhance OTP management by refining OTP handling, improving logging via `LoggingService`, and adding detailed JSDoc comments for improved maintainability and developer clarity." />
   </component>
 </project>
