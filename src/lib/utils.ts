@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { LoggingService } from "@/services/LoggingService"
 // import { URL, URLSearchParams } from 'url'; // Use node's built-in URL module if in Node.js
 // If in a browser environment, these are globally available, no import needed.
 
@@ -43,9 +44,9 @@ export interface OtpAuthData {
  *          due to invalid format or missing required parameters.
  */
 export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
-  console.log("Parsing URI:", uriString);
+  LoggingService.debug("Parsing URI:", uriString);
   if (typeof uriString !== 'string' || !uriString.startsWith('otpauth://')) {
-    console.error("Invalid URI: Does not start with otpauth://");
+    LoggingService.error("Invalid URI: Does not start with otpauth://");
     return null;
   }
 
@@ -55,7 +56,7 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
     // 1. Extract Type (totp or hotp)
     const type = url.hostname.toLowerCase();
     if (type !== 'totp' && type !== 'hotp') {
-      console.error(`Invalid URI: Unknown type "${url.hostname}". Expected 'totp' or 'hotp'.`);
+      LoggingService.error(`Invalid URI: Unknown type "${url.hostname}". Expected 'totp' or 'hotp'.`);
       return null;
     }
     // After this check, TypeScript knows 'type' is 'totp' | 'hotp'
@@ -64,7 +65,7 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
     // Pathname includes the leading '/', remove it.
     const encodedPath = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
     if (!encodedPath) {
-        console.error("Invalid URI: Label cannot be empty.");
+        LoggingService.error("Invalid URI: Label cannot be empty.");
         return null;
     }
     const decodedLabelStr = decodeURIComponent(encodedPath);
@@ -90,7 +91,7 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
     }
     // Ensure account part is not empty after potential split
      if (!labelAccount) {
-        console.error("Invalid URI: Account name part of the label cannot be empty after parsing.");
+        LoggingService.error("Invalid URI: Account name part of the label cannot be empty after parsing.");
         return null;
      }
 
@@ -116,7 +117,7 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
            if (upperAlg === 'SHA1' || upperAlg === 'SHA256' || upperAlg === 'SHA512') {
               params.algorithm = upperAlg;
            } else {
-              console.warn(`Warning: Unknown algorithm specified: "${decodedValue}". Storing as provided.`);
+              LoggingService.warn(`Unknown algorithm specified: "${decodedValue}". Storing as provided.`);
               params.algorithm = decodedValue; // Store potentially unknown algorithm
            }
           break;
@@ -125,10 +126,10 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
           if (!isNaN(digits) && (digits === 6 || digits === 8)) { // Common values
             params.digits = digits;
           } else if (!isNaN(digits) && digits > 0) {
-             console.warn(`Warning: Unusual number of digits specified: ${digits}. Standard is 6 or 8.`);
+             LoggingService.warn(`Unusual number of digits specified: ${digits}. Standard is 6 or 8.`);
              params.digits = digits; // Store valid but unusual number
           } else {
-            console.warn(`Warning: Invalid value for 'digits' parameter: "${decodedValue}". Ignoring.`);
+            LoggingService.warn(`Invalid value for 'digits' parameter: "${decodedValue}". Ignoring.`);
           }
           break;
         case 'period':
@@ -136,7 +137,7 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
           if (!isNaN(period) && period > 0) {
             params.period = period;
           } else {
-            console.warn(`Warning: Invalid value for 'period' parameter: "${decodedValue}". Ignoring.`);
+            LoggingService.warn(`Invalid value for 'period' parameter: "${decodedValue}". Ignoring.`);
           }
           break;
         case 'counter':
@@ -145,12 +146,12 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
           if (!isNaN(counter) && counter >= 0) {
             params.counter = counter;
           } else {
-            console.warn(`Warning: Invalid value for 'counter' parameter: "${decodedValue}". Ignoring.`);
+            LoggingService.warn(`Invalid value for 'counter' parameter: "${decodedValue}". Ignoring.`);
           }
           break;
         default:
           // Store any other parameters found
-          console.log(`Info: Storing unknown parameter "${lowerKey}"`);
+          LoggingService.info(`Storing unknown parameter "${lowerKey}"`);
           params[lowerKey] = decodedValue;
           break;
       }
@@ -158,11 +159,11 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
 
     // 5. Validate Required Parameters
     if (typeof params.secret !== 'string' || params.secret.length === 0) {
-      console.error("Invalid URI: Missing or empty 'secret' parameter.");
+      LoggingService.error("Invalid URI: Missing or empty 'secret' parameter.");
       return null;
     }
     if (type === 'hotp' && typeof params.counter !== 'number') {
-      console.error("Invalid URI: Missing or invalid 'counter' parameter, which is required for type 'hotp'.");
+      LoggingService.error("Invalid URI: Missing or invalid 'counter' parameter, which is required for type 'hotp'.");
       return null;
     }
 
@@ -191,14 +192,21 @@ export function parseOtpAuthUri(uriString: string): OtpAuthData | null {
   } catch (e) {
     // Catch errors from new URL() or decodeURIComponent()
     if (e instanceof Error) {
-        console.error(`Error parsing URI: ${e.message}`);
+        LoggingService.error(`Error parsing URI: ${e.message}`);
     } else {
-        console.error("An unknown error occurred during URI parsing.");
+        LoggingService.error("An unknown error occurred during URI parsing.");
     }
     return null;
   }
 }
 
+/**
+ * Combines multiple class values into a single className string.
+ * This utility merges Tailwind CSS classes properly, handling conflicts according to Tailwind's specificity rules.
+ * 
+ * @param inputs - Any number of class values (strings, objects, arrays, etc.) that will be merged
+ * @returns A string of combined class names optimized for Tailwind CSS
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

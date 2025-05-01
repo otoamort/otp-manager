@@ -29,7 +29,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
 import {cn, parseOtpAuthUri} from '@/lib/utils';
 import jsQR from 'jsqr';
-import {totp} from 'otplib';
+import {authenticator, totp} from 'otplib';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -42,36 +42,75 @@ import {
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {ButtonGroup} from '@/components/ui/button-group';
 
-// Function to generate OTP (replace with your actual OTP generation logic)
+/**
+ * Generates a One-Time Password (OTP) based on the provided secret key.
+ * Optionally adds prefix and postfix text to the generated token.
+ * 
+ * @param secret - The secret key used to generate the OTP
+ * @param prefix - Optional text to add before the OTP (default: '')
+ * @param postfix - Optional text to add after the OTP (default: '')
+ * @returns The generated OTP with optional prefix and postfix
+ */
 function generateOTP(secret: string, prefix: string = '', postfix: string = '') {
-  const token = totp.generate(secret);
+  const token = authenticator.generate(secret);
   return `${prefix}${token}${postfix}`;
 }
 
-// Configuration type
+/**
+ * Interface representing an OTP configuration.
+ * Contains all the information needed to generate and identify an OTP.
+ */
 interface OTPConfig {
+  /** Unique identifier for the configuration */
   id: string;
+  /** Name of the account associated with this OTP */
   accountName: string;
+  /** Secret key used to generate the OTP */
   secretKey: string;
+  /** Optional text to add before the OTP */
   prefix: string;
+  /** Optional text to add after the OTP */
   postfix: string;
 }
 
+/**
+ * Main component for the OTP Manager Pro application.
+ * Handles the display and management of OTP configurations, including adding,
+ * editing, deleting, and generating OTP codes.
+ * 
+ * @returns The rendered OTP Manager Pro application
+ */
 export default function Home() {
+  /** State for storing all OTP configurations */
   const [otpConfigs, setOtpConfigs] = useState<OTPConfig[]>([]);
+  /** Controls the visibility of the add/edit dialog */
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  /** Stores the account name for the current configuration being added/edited */
   const [accountName, setAccountName] = useState('');
+  /** Stores the secret key for the current configuration being added/edited */
   const [secretKey, setSecretKey] = useState('');
+  /** Stores the prefix for the current configuration being added/edited */
   const [prefix, setPrefix] = useState('');
+  /** Stores the postfix for the current configuration being added/edited */
   const [postfix, setPostfix] = useState('');
+  /** ID of the configuration being edited, or null when adding a new configuration */
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  /** Hook for displaying toast notifications */
   const {toast} = useToast();
 
+  /** Controls whether the QR code scanner is active */
   const [isScanning, setIsScanning] = useState(false);
+  /** Reference to the video element used for QR code scanning */
   const videoRef = useRef<HTMLVideoElement>(null);
+  /** Reference to the canvas element used for processing video frames */
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** Indicates whether the user has granted camera access permission */
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
 
+  /**
+   * Effect hook to load OTP configurations from local storage when the component mounts.
+   * This ensures that user configurations persist between sessions.
+   */
   useEffect(() => {
     // Load configurations from local storage on component mount
     const storedConfigs = localStorage.getItem('otpConfigs');
@@ -80,11 +119,19 @@ export default function Home() {
     }
   }, []);
 
+  /**
+   * Effect hook to save OTP configurations to local storage whenever they change.
+   * This ensures that user configurations are always up-to-date in storage.
+   */
   useEffect(() => {
     // Save configurations to local storage whenever otpConfigs changes
     localStorage.setItem('otpConfigs', JSON.stringify(otpConfigs));
   }, [otpConfigs]);
 
+  /**
+   * Handles the action of adding a new OTP configuration.
+   * Opens the dialog and resets all form fields.
+   */
   const handleAddConfig = () => {
     setIsDialogOpen(true);
     setSelectedConfigId(null); // Reset selected config for adding new config
@@ -94,6 +141,12 @@ export default function Home() {
     setPostfix('');
   };
 
+  /**
+   * Handles the action of editing an existing OTP configuration.
+   * Opens the dialog and populates form fields with the selected configuration's data.
+   * 
+   * @param config - The OTP configuration to edit
+   */
   const handleEditConfig = (config: OTPConfig) => {
     setIsDialogOpen(true);
     setSelectedConfigId(config.id);
@@ -103,6 +156,11 @@ export default function Home() {
     setPostfix(config.postfix);
   };
 
+  /**
+   * Handles saving a new or updated OTP configuration.
+   * Validates required fields, creates or updates the configuration,
+   * and displays a success or error message.
+   */
   const handleSaveConfig = () => {
     if (!accountName || !secretKey) {
       toast({
@@ -137,6 +195,12 @@ export default function Home() {
     });
   };
 
+  /**
+   * Handles the deletion of an OTP configuration.
+   * Removes the configuration with the specified ID and displays a success message.
+   * 
+   * @param id - The ID of the configuration to delete
+   */
   const handleDeleteConfig = (id: string) => {
     setOtpConfigs((prevConfigs) =>
       prevConfigs.filter((config) => config.id !== id)
@@ -147,6 +211,15 @@ export default function Home() {
     });
   };
 
+  /**
+   * Handles copying an OTP code to the clipboard.
+   * Generates the OTP using the provided secret, prefix, and postfix,
+   * copies it to the clipboard, and displays a success message.
+   * 
+   * @param secret - The secret key used to generate the OTP
+   * @param prefix - Text to add before the OTP
+   * @param postfix - Text to add after the OTP
+   */
   const handleCopyOTP = (secret: string, prefix: string, postfix: string) => {
     const otp = generateOTP(secret, prefix, postfix);
     navigator.clipboard.writeText(otp);
@@ -156,10 +229,19 @@ export default function Home() {
     });
   };
 
+  /** 
+   * State to track the remaining time (in seconds) for each OTP before it expires
+   * Keys are configuration IDs, values are seconds remaining
+   */
   const [remainingTimes, setRemainingTimes] = useState<{
     [key: string]: number;
   }>({});
 
+  /**
+   * Calculates the remaining time for each OTP configuration before it expires.
+   * TOTP codes typically change every 30 seconds, so this calculates how many
+   * seconds are left in the current period.
+   */
   const calculateRemainingTime = () => {
     const newRemainingTimes: {[key: string]: number} = {};
     otpConfigs.forEach((config) => {
@@ -168,12 +250,24 @@ export default function Home() {
     setRemainingTimes(newRemainingTimes);
   };
 
+  /**
+   * Effect hook to update the remaining time for each OTP every second.
+   * Sets up an interval that runs every second and cleans it up when the component unmounts.
+   */
   useEffect(() => {
     calculateRemainingTime();
     const intervalId = setInterval(calculateRemainingTime, 1000);
     return () => clearInterval(intervalId);
   }, [otpConfigs]);
 
+  /**
+   * Handles refreshing and copying an OTP code.
+   * Generates a new OTP, copies it to the clipboard, and displays a success message.
+   * 
+   * @param secret - The secret key used to generate the OTP
+   * @param prefix - Text to add before the OTP
+   * @param postfix - Text to add after the OTP
+   */
   const handleRefreshOTP = (secret: string, prefix: string, postfix: string) => {
     // For simplicity, directly copy the new OTP without waiting for the timer
     const otp = generateOTP(secret, prefix, postfix);
@@ -184,12 +278,22 @@ export default function Home() {
     });
   };
 
+  /** Controls whether OTP codes are visible or masked (for security) */
   const [isOtpVisible, setIsOtpVisible] = useState(false);
 
+  /**
+   * Toggles the visibility of OTP codes between shown and hidden.
+   * This allows users to see the actual OTP code when needed while keeping it
+   * hidden from shoulder surfers by default.
+   */
   const toggleOtpVisibility = () => {
     setIsOtpVisible(!isOtpVisible);
   };
 
+  /**
+   * Requests camera permission from the user and sets up the video stream.
+   * Updates state based on whether permission was granted or denied.
+   */
   const getCameraPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({video: true});
@@ -210,6 +314,11 @@ export default function Home() {
     }
   };
 
+  /**
+   * Handles the process of scanning a QR code using the device camera.
+   * First ensures camera permission is granted, then continuously analyzes
+   * video frames to detect QR codes containing OTP configuration data.
+   */
   const handleScanQRCode = async () => {
     if (!hasCameraPermission) {
       await getCameraPermission();
@@ -217,6 +326,10 @@ export default function Home() {
     }
 
     setIsScanning(true);
+    /**
+     * Recursive function that processes video frames to detect QR codes.
+     * Continues until a QR code is found or scanning is stopped.
+     */
     const tick = async () => {
       if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
         const video = videoRef.current;
@@ -254,6 +367,12 @@ export default function Home() {
     tick();
   };
 
+  /**
+   * Handles the upload of an image containing a QR code.
+   * Processes the image to extract OTP configuration data from the QR code.
+   * 
+   * @param event - The change event from the file input element
+   */
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -293,6 +412,10 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
+  /**
+   * Handles exporting all OTP configurations to a JSON file.
+   * Creates a downloadable file containing all the user's OTP configurations.
+   */
   const handleExportConfig = () => {
     const jsonString = JSON.stringify(otpConfigs);
     const blob = new Blob([jsonString], {type: 'application/json'});
@@ -306,6 +429,12 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  /**
+   * Handles importing OTP configurations from a JSON file.
+   * Reads the file, parses the JSON, and updates the application state with the imported configurations.
+   * 
+   * @param event - The change event from the file input element
+   */
   const handleImportConfig = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
